@@ -1,10 +1,14 @@
 import { redirect } from "next/navigation";
+import { isRedirectError } from "next/dist/client/components/redirect";
 import { Dumbbell } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { createSession } from "@/lib/session";
+import { SubmitButton } from "@/components/SubmitButton";
 
-export default function LoginPage() {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+  const { error } = await searchParams;
+
   async function login(formData: FormData) {
     "use server";
     const email = formData.get("email") as string;
@@ -33,7 +37,7 @@ export default function LoginPage() {
       await createSession(user.id, user.role);
 
     } catch (e) {
-      if (e instanceof Error && e.message === "NEXT_REDIRECT") {
+      if (isRedirectError(e)) {
         throw e;
       }
       redirect("/login?error=InternalError");
@@ -53,7 +57,14 @@ export default function LoginPage() {
           <p className="text-zinc-500 text-sm mt-1">Sign in to your account</p>
         </div>
         
-        {/* We can display error if searchParams has error, but Next.js 15 requires awaiting searchParams, so this is a client-side warning normally or just read await searchParams for server component. Since we can't await searchParams directly in the render of a non-async component, I will change this to an async component. */}
+        {error && (
+          <div className="mb-6 p-3 bg-red-50 text-red-600 text-sm font-medium rounded-md border border-red-200">
+            {error === "InvalidCredentials" && "Invalid email or password."}
+            {error === "MissingCredentials" && "Please enter both email and password."}
+            {error === "InternalError" && "An internal database error occurred. Please check Vercel logs and environment variables."}
+          </div>
+        )}
+
         <form action={login} className="space-y-4">
           <div className="space-y-2">
             <label className="text-sm font-medium">Email</label>
@@ -61,7 +72,7 @@ export default function LoginPage() {
               type="email" 
               name="email"
               required
-              className="w-full bg-background border border-border rounded-md h-10 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-brand-500" 
+              className="w-full bg-background border border-border rounded-md h-10 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-shadow" 
             />
           </div>
           <div className="space-y-2">
@@ -70,15 +81,10 @@ export default function LoginPage() {
               type="password" 
               name="password"
               required
-              className="w-full bg-background border border-border rounded-md h-10 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-brand-500" 
+              className="w-full bg-background border border-border rounded-md h-10 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-brand-500 transition-shadow" 
             />
           </div>
-          <button 
-            type="submit"
-            className="w-full bg-brand-500 text-white rounded-md h-10 text-sm font-medium hover:bg-brand-600 transition-colors"
-          >
-            Sign In
-          </button>
+          <SubmitButton>Sign In</SubmitButton>
         </form>
       </div>
     </div>
