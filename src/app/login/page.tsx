@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { isRedirectError } from "next/dist/client/components/redirect";
 import { Dumbbell } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
@@ -36,8 +35,12 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       // Create secure session
       await createSession(user.id, user.role);
 
-    } catch (e) {
-      if (isRedirectError(e)) {
+    } catch (e: any) {
+      // Re-throw Next.js redirect errors so they aren't swallowed
+      if (e && e.digest && typeof e.digest === 'string' && e.digest.startsWith("NEXT_REDIRECT")) {
+        throw e;
+      }
+      if (e instanceof Error && e.message === "NEXT_REDIRECT") {
         throw e;
       }
       redirect("/login?error=InternalError");
