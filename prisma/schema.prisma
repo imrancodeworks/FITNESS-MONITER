@@ -1,0 +1,134 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      String   @default("STAFF") // "ADMIN" or "STAFF"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  paymentsRecorded Payment[]
+  auditLogs        AuditLog[]
+}
+
+model Member {
+  id               String   @id @default(uuid())
+  memberId         String   @unique // e.g. A1-001
+  fullName         String
+  phoneNumber      String   @unique
+  emailAddress     String?
+  gender           String?
+  dateOfBirth      DateTime?
+  address          String?
+  emergencyContact String?
+  notes            String?
+  isArchived       Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  memberships      Membership[]
+  payments         Payment[]
+  auditLogs        AuditLog[]
+  attendances      Attendance[]
+}
+
+model MembershipPlan {
+  id             String   @id @default(uuid())
+  name           String
+  durationMonths Int?     
+  durationDays   Int?     
+  fee            Float
+  isActive       Boolean  @default(true)
+  order          Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  memberships    Membership[]
+}
+
+model Membership {
+  id               String   @id @default(uuid())
+  memberId         String
+  member           Member   @relation(fields: [memberId], references: [id])
+  planId           String?
+  plan             MembershipPlan? @relation(fields: [planId], references: [id])
+  
+  startDate        DateTime
+  endDate          DateTime
+  
+  fee              Float
+  admissionFee     Float?   @default(0)
+  discount         Float?   @default(0)
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  allocations      PaymentAllocation[]
+}
+
+model Payment {
+  id               String   @id @default(uuid())
+  memberId         String
+  member           Member   @relation(fields: [memberId], references: [id])
+  amount           Float
+  date             DateTime
+  method           String   
+  referenceNumber  String?
+  notes            String?
+  isReversed       Boolean  @default(false)
+  reversalReason   String?
+  recordedById     String
+  recordedBy       User     @relation(fields: [recordedById], references: [id])
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  allocations      PaymentAllocation[]
+}
+
+model PaymentAllocation {
+  id           String     @id @default(uuid())
+  paymentId    String
+  payment      Payment    @relation(fields: [paymentId], references: [id])
+  membershipId String
+  membership   Membership @relation(fields: [membershipId], references: [id])
+  amount       Float
+  createdAt    DateTime   @default(now())
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  memberId    String?
+  member      Member?  @relation(fields: [memberId], references: [id])
+  action      String
+  details     String
+  createdAt   DateTime @default(now())
+}
+
+model Attendance {
+  id          String   @id @default(uuid())
+  memberId    String
+  member      Member   @relation(fields: [memberId], references: [id])
+  checkIn     DateTime @default(now())
+  checkOut    DateTime?
+  date        String   // YYYY-MM-DD for easy filtering
+}
+
+model Setting {
+  key         String   @id
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+}
